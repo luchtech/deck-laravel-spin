@@ -1,29 +1,50 @@
-version: '3.1'
-#These are example services, remove the contents and add your own
 services:
-  wordpress:
-    image: wordpress
-    restart: always
-    ports:
-      - "${HTTP_PORT}:80"
+  php:
+    build:
+      target: development
+      args:
+        USER_ID: ${SPIN_USER_ID}
+        GROUP_ID: ${SPIN_GROUP_ID}
     environment:
-      WORDPRESS_DB_HOST: db
-      WORDPRESS_DB_USER: exampleuser
-      WORDPRESS_DB_PASSWORD: examplepass
-      WORDPRESS_DB_NAME: exampledb
+        SSL_MODE: mixed
     volumes:
-      - "${APP_CODE_PATH_HOST}:/var/www/html${APP_CODE_CONTAINER_FLAG}"
-  db:
-    image: mysql:5.7
-    restart: always
-    environment:
-      MYSQL_DATABASE: exampledb
-      MYSQL_USER: exampleuser
-      MYSQL_PASSWORD: examplepass
-      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+      - '${APP_CODE_PATH_HOST}:/var/www/html/'
     ports:
-    - "${MYSQL_PORT}:3306"
+      - '${HTTP_PORT}:8080'
+      - '${HTTPS_PORT}:8443'
+    networks:
+      - development
+    depends_on:
+      - mariadb
+
+  node:
+    image: node:20
     volumes:
-      - db:/var/lib/mysql
-volumes:
-  db:
+      - '${APP_CODE_PATH_HOST}:/usr/src/app/'
+    working_dir: /usr/src/app/
+    networks:
+      - development
+
+  mariadb:
+    image: mariadb:10.11
+    networks:
+      - development
+    volumes:
+      - '${APP_CODE_PATH_HOST}/.infrastructure/volume_data/mariadb/database_data/:/var/lib/mysql'
+    environment:
+        MYSQL_ROOT_PASSWORD: 'rootpassword'
+        MYSQL_DATABASE: 'laravel'
+        MYSQL_USER: 'mysqluser'
+        MYSQL_PASSWORD: 'mysqlpassword'
+    ports:
+      - '${MYSQL_PORT}:3306'
+
+  mailpit:
+      image: axllent/mailpit
+      networks:
+        - development
+      ports:
+        - '${MAILPIT_PORT}:8025'
+
+networks:
+  development:
